@@ -1,33 +1,108 @@
+#!/usr/bin/env python3
+
 import click
 import os
 import shutil
+import time
+import sys
+import time
+import threading
 
 @click.command()
 @click.argument('source', type=click.Path(exists=True))
 @click.argument('destination', type=click.Path())
 @click.option('-d', '--dry-run', is_flag=True, default=False, help='Dry run')
 @click.option('-n', '--name', default='backup', help='Name of the backup')
-@click.option('-t', '--timestamp', is_flag=True, default=True, help='Add timestamp to name')
+@click.option('-t', '--timestamp', is_flag=True, default=True, help='Remove timestamp from name')
 @click.option('-H', 'deref_sym', is_flag=True, default=False, help='Dereference symlinks')
 @click.help_option('-h', '--help')
 
 def backup(source, destination, dry_run, name, timestamp, deref_sym):
     """Backup SOURCE to DESTINATION"""
-    click.echo('Backing up "%s" to "%s"' % (source, destination))
+    start_time = time.time()
+    click.echo(f'\rBacking up "{colors.OKBLUE}%s{colors.RESET}" to "{colors.OKBLUE}%s{colors.RESET}"' % (source, destination))
 
     if timestamp:
-        name = '%s-%s' % (name, click.format_filename(click.format_datetime()))
+        name = '%s-%s' % (name, time.strftime('%Y-%m-%d_%H:%M:%S'))
         destination = os.path.join(destination, name)
-        click.echo('Creating backup: "%s"' % name)
+        click.echo(f'\rCreating backup: "{colors.BOLD}%s{colors.RESET}"' % name)
+    else:
+        destination = os.path.join(destination, name)
+        click.echo(f'\rCreating backup: "{colors.BOLD}%s{colors.RESET}"' % destination)
     
     if not dry_run:
-        shutil.copytree(source, destination, symlinks=not deref_sym, ignore_dangling_symlinks=True)
-        click.echo('Backup created at "%s"' % destination)
-        click.echo('Symbolic links are %s' % ('dereferenced' if deref_sym else 'preserved'))
+        try:
+            shutil.copytree(source, destination, symlinks=not deref_sym, ignore_dangling_symlinks=True)
+        except NotADirectoryError:
+            shutil.copy(source, destination, follow_symlinks=not deref_sym)
+        click.echo(f'\r\nBackup created at "{colors.OKGREEN}%s{colors.RESET}"' % destination)
+        click.echo('\rSymbolic links are %s' % (colors.OKBLUE + 'dereferenced' + colors.RESET if deref_sym else colors.OKBLUE + 'preserved' + colors.RESET))
+    else:
+        click.echo('\rDry run, no backup created')
+        click.echo('\n----------------')
+        click.echo('\rSymbolic links would be %s' % (colors.OKBLUE + 'dereferenced' + colors.RESET if deref_sym else colors.OKBLUE + 'preserved' + colors.RESET))
+        click.echo('\rBackup at "%s" is %s' % (destination, colors.FAIL + 'occupied' + colors.RESET if os.path.exists(destination) else colors.OKGREEN + 'free' + colors.RESET))
+        click.echo('\n----------------')
+        click.echo(f'\rTotal directories: {colors.BOLD}%s{colors.RESET}\nTotal files: {colors.BOLD}%s{colors.RESET}' % get_files_directories(source, deref_sym))
+        click.echo(f'\rTotal size of backup: {colors.BOLD}%sB{colors.RESET}' % os.path.getsize(source))
+    
+    click.echo(f'\r\nProgram completed in {colors.BOLD}%0.5f{colors.RESET} seconds' % (time.time() - start_time))
+
+def get_files_directories(path, deref=False):
+    dir_count = file_count = 0
+
+    for _, dir_names, file_names in os.walk(path, followlinks=deref):
+        file_count += len(file_names)
+        dir_count += len(dir_names)
+
+    return dir_count, file_count
+
+class colors:
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    REVERSED = '\033[7m'
+    RESET = '\033[0m'
+
+class Spinner:
+    busy = False
+    delay = 0.1
+
+    @staticmethod
+    def spinning_cursor():
+        while 1: 
+            for cursor in '|/-\\': yield cursor
+
+    def __init__(self, delay=None):
+        self.spinner_generator = self.spinning_cursor()
+        if delay and float(delay): self.delay = delay
+
+    def spinner_task(self):
+        while self.busy:
+            sys.stdout.write(next(self.spinner_generator))
+            sys.stdout.flush()
+            time.sleep(self.delay)
+            sys.stdout.write('\b')
+            sys.stdout.flush()
+
+    def __enter__(self):
+        self.busy = True
+        threading.Thread(target=self.spinner_task).start()
+
+    def __exit__(self, exception, value, tb):
+        sys.stdout.write("\033[K")
+        sys.stdout.flush()
+        self.busy = False
+        time.sleep(self.delay)
+        if exception is not None:
+            return False
 
 if __name__ == '__main__':
     try:
-        backup()
+        with Spinner():
+            backup()
     except Exception as e:
-        click.echo('Error: %s\nExiting' % e)
-        exit()
+        click.echo(f'\r{colors.FAIL}Error: {e}{colors.RESET}')
