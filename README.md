@@ -16,7 +16,7 @@ or
 ## Usage
 `muckup [-dntHi] SOURCE DESTINATION`
 <br>
-Simply type in the source path (can be relative) and destination path (can also be relative). The script will copy everything in the source (or the entire file) and copy it to the destination with the default name (backup-%Y-%m-%d_%H:%M:%S). Note: when copying one file, the extension will __not__ be preserved.
+Simply type in the source path (can be relative) and destination path (can also be relative). The script will copy everything in the source (or the entire file) and copy it to the destination with the default name (`backup-%Y-%m-%d_%H:%M:%S`). Note: when copying one file, the extension will __not__ be preserved.
 
 ### Command Option Help
 `-d, --dry-run`: Run the command without actually copying or pasting files (use for testing purposes)
