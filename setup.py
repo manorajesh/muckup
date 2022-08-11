@@ -1,5 +1,9 @@
 from setuptools import setup
 
+def readme():
+    with open('README.md') as f:
+        return f.read()
+
 setup(
     name="muckup",
     version='0.1',
@@ -24,4 +28,6 @@ setup(
         "Programming Language :: Python :: 3",
         "Topic :: System :: Archiving :: Backup",
     ],
+    keywords="backup utility",
+    long_description=readme(),
 )
