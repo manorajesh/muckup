@@ -1,7 +1,7 @@
 from setuptools import setup
 
 def readme():
-    with open('README.rst') as f:
+    with open('README.md') as f:
         return f.read()
 
 setup(
@@ -29,5 +29,6 @@ setup(
         "Topic :: System :: Archiving :: Backup",
     ],
     keywords="backup utility",
+    long_description_content_type="text/markdown",
     long_description=readme(),
 )
