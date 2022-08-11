@@ -6,7 +6,7 @@ def readme():
 
 setup(
     name="muckup",
-    version='0.1',
+    version='0.2',
     py_modules=['muckup'],
     description="A simple backup utility for folders and files.",
     author="Mano",
